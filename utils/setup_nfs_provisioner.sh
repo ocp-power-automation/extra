@@ -105,7 +105,7 @@ fi
 
 DEPLYAML=deploy/deployment-ppc64le.yaml
 yq eval " \
-   .spec.template.spec.containers[0].image = \"docker.io/ibmcom/nfs-client-provisioner-ppc64le:latest\" | \
+   .spec.template.spec.containers[0].image = \"registry.k8s.io/sig-storage/nfs-subdir-external-provisioner:v4.0.2\" | \
    (.spec.template.spec.containers[0].env[] | select(.name==\"NFS_SERVER\")).value = \"$SVRADDR\" | \
    (.spec.template.spec.containers[0].env[] | select(.name==\"NFS_PATH\")).value = \"$LOCALDIR\" | \
    .spec.template.spec.volumes[0].nfs.server = \"$SVRADDR\" | \
