@@ -76,38 +76,44 @@ THEZIP=kubernetes-incubator.zip
 curl -s -L -o $THEZIP https://github.com/kubernetes-incubator/external-storage/archive/master.zip
 if [ $? -ne 0 ]; then
 	echo "ERROR: failed to download external storage zip -- aborting..."
-	exit 6
+	exit 8
 fi
 
+which unzip 2>&1 >/dev/null || yum -y install unzip
+if [ $? -ne 0 ]; then
+	echo "ERROR: unzip command unavailable -- aborting..."
+	exit 9
+fi
 unzip -q $THEZIP
 
 cd external-storage-master/nfs-client/
 
 echo "INFO: generating deployment.yaml for ppc64le..."
 
-YQSCR=update_deployment.yaml
-echo "- command: update
-  path: spec.template.spec.containers[0].image
-  value: docker.io/ibmcom/nfs-client-provisioner-ppc64le:latest
-- command: update
-  path: spec.template.spec.containers[0].env.(name==NFS_SERVER).value
-  value: $SVRADDR
-- command: update
-  path: spec.template.spec.containers[0].env.(name==NFS_PATH).value
-  value: $LOCALDIR
-- command: update
-  path: spec.template.spec.volumes[0].nfs.server
-  value: $SVRADDR
-- command: update
-  path: spec.template.spec.volumes[0].nfs.path
-  value: $LOCALDIR
-" >$YQSCR
+which go 2>&1 >/dev/null || yum -y install golang-bin
+which yq 2>&1 >/dev/null || GO111MODULE=on go get github.com/mikefarah/yq/v4
+if [ $? -ne 0 ]; then
+	echo "ERROR: yq command unavailable -- aborting..."
+	exit 10
+fi
+test -z "$GOBIN" && PATH=$PATH:~/go/bin || PATH=$PATH:$GOBIN
+yq --version | grep -q 'version 4\.'
+if [ $? -ne 0 ]; then
+	echo "ERROR: only yq v4 supported -- aborting..."
+	exit 11
+fi
 
 DEPLYAML=deploy/deployment-ppc64le.yaml
-yq write -s $YQSCR deploy/deployment.yaml > $DEPLYAML
+yq eval " \
+   .spec.template.spec.containers[0].image = \"docker.io/ibmcom/nfs-client-provisioner-ppc64le:latest\" | \
+   (.spec.template.spec.containers[0].env[] | select(.name==\"NFS_SERVER\")).value = \"$SVRADDR\" | \
+   (.spec.template.spec.containers[0].env[] | select(.name==\"NFS_PATH\")).value = \"$LOCALDIR\" | \
+   .spec.template.spec.volumes[0].nfs.server = \"$SVRADDR\" | \
+   .spec.template.spec.volumes[0].nfs.path = \"$LOCALDIR\" \
+" deploy/deployment.yaml > $DEPLYAML
 if [ $? -ne 0 -o ! -s $DEPLYAML ]; then
 	echo "ERROR: failed to update deployment.yaml -- aborting..."
-	exit 7
+	exit 12
 fi
 
 echo "INFO: executing oc commands to set up NFS provisioner..."
