@@ -97,7 +97,7 @@ if [ $? -ne 0 ]; then
 	exit 10
 fi
 test -z "$GOBIN" && PATH=$PATH:~/go/bin || PATH=$PATH:$GOBIN
-yq --version | grep -q 'version 4\.'
+yq --version | grep -q 'version v4\.'
 if [ $? -ne 0 ]; then
 	echo "ERROR: only yq v4 supported -- aborting..."
 	exit 11
